@@ -75,8 +75,8 @@ class NextChar(nn.Module):
         return x
 
 def train_model(model, X, Y, loss_fn, opt, epochs, batch_size, print_every=100):
-    device = model.device
-    model.train()
+    # device = model.device
+    # model.train()
     for epoch in range(epochs):
         start_time = time.time()
         for i in range(0, X.shape[0], batch_size):
@@ -130,11 +130,13 @@ def generate_text_with_model(model, input_text, itos, stoi, block_size, length=1
         for i in range(length):
             x = torch.tensor(context).view(1, -1).to(device)
             y_pred = model(x)
-            ix = torch.argmax(y_pred, dim=1).item()
+            ix = torch.distributions.categorical.Categorical(logits=y_pred).sample().item()
+
             next_char = itos[ix]
             if next_char == '_':
-                break
-            generated_text += next_char
+                generated_text += ''
+            else:
+                generated_text += next_char
             context = context[1:] + [ix]
     return generated_text
 
@@ -146,16 +148,15 @@ def main():
     st.sidebar.header("Text Generation Settings")
     block_size = 5
     input_text = st.sidebar.text_input("Input Text", value="April 1995")
-    min_emb = st.sidebar.slider("Minimum Embedding Size", min_value=2, max_value=5, value=2, step=1)
-    max_emb = st.sidebar.slider("Maximum Embedding Size", min_value=2, max_value=5, value=5, step=1)
     length = st.sidebar.slider("Length of Generated Text", min_value=10, max_value=1000, value=500, step=10)
-
+    min_emb = 2
+    max_emb = 5
+    emb_dim = st.sidebar.slider("Select Embedding Size", min_value=min_emb, max_value=max_emb, value=min_emb, step=1)
     if st.sidebar.button("Train and Save Models"):
         train_and_save_models(min_emb, max_emb)
         st.sidebar.success("Models trained and saved successfully!")
 
     if st.sidebar.button("Generate Text"):
-        emb_dim = st.sidebar.slider("Select Embedding Size", min_value=min_emb, max_value=max_emb, value=min_emb, step=1)
         model = load_model(emb_dim)
         generated_text = generate_text_with_model(model, input_text, itos, stoi, block_size, length)
         st.subheader("Generated Text:")
